@@ -4,7 +4,7 @@
     {
         public static void Main(string[] args)
         {
-            string path = @"C:\Users\twisted\source\repos\Crystal\bin\Release\net7.0\script.cy";
+            string path = @"../../../tests/test_general.cy";
             Parser parser = new Parser(path);
             parser.parse();
         }

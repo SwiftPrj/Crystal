@@ -11,40 +11,25 @@ using System.Threading.Tasks;
 
 namespace Crystal
 {
-    enum Types
-    {
-        INT,
-        DOUBLE,
-        FLOAT,
-        STRING,
-        ARRAY
-    }
-
     public class Parser
     {
+        private Memory memory;
         public string path;
-        public bool isInForLoop = false;
-        public Parser(string path) { this.path = path; }
 
-        public Dictionary<string, object> variables = new Dictionary<string, object>();
-        public Dictionary<string, object> values = new Dictionary<string, object>();
-        public Dictionary<string, object> functions = new Dictionary<string, object>();
-        public ArrayList memory = new ArrayList(); // this is the entire memory pool, everything related to the programming envoirnment (along with keywords!) is stored here 
+        public Parser(string path) { 
+            this.path = path;
+        }
 
         public void parse()
         {
-            var code = File.ReadAllLines(path);
-            // init memory header 
-            memory.Add("print");
-            memory.Add("idle");
-            memory.Add("var");
-            memory.Add("func");
-            executeString(code);
-            memory.Add(variables);
-            memory.Add(values);
+            memory = new Memory();
+            List<string> code = File.ReadAllLines(path).ToList();
+            executeCode(code);
         }
 
-        public void executeForLoop(string[] lines, int i)
+        public bool isInForLoop = false;
+
+        public void handleForLoop(List<string> lines, int i)
         {
             var line = lines[i].Trim();
             if (line.Contains("for("))
@@ -54,21 +39,25 @@ namespace Crystal
                     var loopLine = i;
                     isInForLoop = true;
                     string loop = line.Replace("for(", String.Empty).Replace("->", String.Empty).Replace(")", String.Empty).Replace("{", String.Empty).Trim();
+                    
                     var expression = loop.Split(":");
                     var varName = expression[0].Replace(":", String.Empty).Trim();
                     var type = expression[1].Split("=")[0].Trim();
+                    
                     var value = expression[1].Split(";")[0].Split("=")[1].Trim();
-                    var condition = expression[1].Replace(";", String.Empty).Replace("=", String.Empty).Replace(type, String.Empty).Replace(value, String.Empty).Replace("-", String.Empty).Replace("increment", String.Empty).Trim();
                     var valueInt = int.Parse(value);
+                    
+                    var condition = expression[1].Replace(";", String.Empty).Replace("=", String.Empty).Replace(type, String.Empty).Replace(value, String.Empty).Replace("-", String.Empty).Replace("increment", String.Empty).Trim();
                     var symbol = String.Empty;
+                    
                     // create temp var 
-                    variables.Add(varName, Types.INT);
-                    values.Add(varName, valueInt);
-                    if (condition.Contains("<"))
+                    memory.CreateVar(varName, Type.INT, valueInt);
+
+                    if (condition.Contains('<'))
                     {
                         symbol = "<";
                     }
-                    if (condition.Contains(">"))
+                    if (condition.Contains('>'))
                     {
                         symbol = ">";
                     }
@@ -83,35 +72,54 @@ namespace Crystal
                     var evalValue = expression[1].Replace(";", String.Empty).Replace("=", String.Empty).Replace(type, String.Empty).Replace(value, String.Empty).Replace("-", String.Empty).Replace("increment", String.Empty).Replace(varName, String.Empty).Replace(symbol, String.Empty).Trim();
                     if (condition.Contains(varName))
                     {
-                        // hard code 
-                        switch (symbol)
+                        if (symbol.Equals("<"))
                         {
-                            case "<":
-                                for (int j = int.Parse(value); j < int.Parse(evalValue) - 1; j++)
+                            List<string> code = new List<string>();
+
+                            bool endBracket = false;
+                            foreach (var bracket in lines)
+                            {
+                                if (bracket.Contains('}'))
                                 {
-                                    values.Remove(varName);
-                                    values.Add(varName, j);
-                                    string[] code = new string[] { lines[i + 1], lines[i + 2] };
-                                    executeString(code);
-                                    foreach (var bracket in lines)
+                                    if (i < lines.IndexOf(bracket))
                                     {
-                                        if (bracket.Contains("}"))
+                                        for(int j = i + 1; j < lines.IndexOf(bracket); ++j)
                                         {
-                                            if (j == int.Parse(evalValue) - 1)
+                                            code.Add(lines[j]);
+
+                                            if (j == lines.IndexOf(bracket) - 1)
                                             {
+                                                endBracket = true;
                                                 isInForLoop = false;
-                                                values.Remove(varName);
-                                                variables.Remove(varName);
-                                                break;
                                             }
-                                        } 
+                                        }
+                                        break;
                                     }
                                 }
-                                break;
-                            default:
-                                break;
-                        }
+                            }
 
+                            for (int j = int.Parse(value); j < int.Parse(evalValue); j++)
+                            {
+                                if (j == int.Parse(value)) continue;
+                                executeCode(code);
+
+                                foreach (var bracket in lines)
+                                {
+                                    if (bracket.Contains('}'))
+                                    {
+                                        if (j == int.Parse(evalValue) - 1)
+                                        {
+                                            isInForLoop = false;
+
+                                            memory.DeleteVar(varName);
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                memory.ChangeValue(varName, j);
+                            }
+                        }
                     }
                     else 
                     {
@@ -121,18 +129,18 @@ namespace Crystal
             }
         }
 
-        public void executeString(string[] lines) 
+        public void executeCode(List<string> lines) 
         {
             for (int i = 0; i < lines.Count(); i++)
             {
-
                 var line = lines[i].Trim();
                 if (line.Trim() == "}" && isInForLoop)
                 {
                     // breaking out of the for loop 
                     isInForLoop = false;
                 }
-                executeForLoop(lines, i);
+                handleForLoop(lines, i);
+
                 if (line.Contains("func") && line.Contains("->") && line.Contains("(") && line.Contains(")"))
                 {
                     int lineNum = i + 1;
@@ -145,7 +153,7 @@ namespace Crystal
                     {
                         finalType = type.Replace("()", String.Empty).Trim();
                     }
-                    if (!functions.ContainsKey(func))
+                    if (!memory.functions.ContainsKey(func))
                     {
                         Console.WriteLine(func);
                     }
@@ -156,19 +164,55 @@ namespace Crystal
                     if (!isInForLoop)
                     {
                         string declaration = line.Split(":")[0].Trim();
-                        string variable = declaration.Replace("var", String.Empty).Trim();
+                        string variable = declaration.Replace("var", string.Empty).Trim();
+
                         string type = line.Split(":")[1].Trim();
                         string varType = type.Split("=")[0].Trim();
-                        string value = type.Split("=")[1].Replace(";", "").Trim();
-                        switch (varType) // var type 
+
+                        // array logic
+                        string explicitType = String.Empty;
+                        string typeLiteral = varType;
+                        try
+                        {
+                            explicitType = varType.Split("<")[1].Split(">")[0];
+                            typeLiteral = varType.Replace("<" + explicitType + ">", string.Empty);
+                        }
+                        catch (Exception) { }
+
+                        string value = type.Split("=")[1].Replace(";", string.Empty).Trim();
+
+                        switch (typeLiteral) // var type 
                         {
                             case "int":
-                                variables.Add(variable, Types.INT);
-                                values.Add(variable, int.Parse(value));
+                                memory.CreateVar(variable, Type.INT, value);
                                 break;
                             case "float":
-                                variables.Add(variable, Types.FLOAT);
-                                values.Add(variable, float.Parse(value));
+                                memory.CreateVar(variable, Type.FLOAT, value);
+                                break;
+                            case "array":
+                                string content = value.Replace(" ", string.Empty).Split("{")[1].Split("}")[0];
+
+                                var list = content.Split(",");
+                                if (explicitType.Equals("int"))
+                                {
+                                    int[] array = new int[list.Count()];
+
+                                    for (int uy = 0; uy < list.Count(); ++uy)
+                                    {
+                                        string s = list[uy];
+                                        try
+                                        {
+                                            array[uy] = int.Parse(s);
+                                        }
+                                        catch (Exception)
+                                        {
+                                            /*Console.WriteLine(e.StackTrace);*/
+                                            array[uy] = int.Parse(memory.GetValue(s).ToString());
+                                        }
+                                    }
+
+                                    memory.CreateVar(variable, Type.ARRAYINT, array);
+                                }
                                 break;
                             default:
                                 throw new Exception("Invalid variable type at line " + lineNum);
@@ -207,15 +251,39 @@ namespace Crystal
                         }
                         else
                         {
-                            var parse = line.Replace(";", "").Trim();
-                            var argument = parse.Replace("print", "").Replace("(", "").Replace(")", "").Trim();
-                            if (values.ContainsKey(argument))
+                            var parse = line.Replace(";", string.Empty).Trim();
+                            var argument = parse.Replace("print", string.Empty).Split("(")[1].Split(")")[0].Trim();
+                            object value = memory.GetValue(argument.Split("[")[0]);
+
+                            if (argument == null)
                             {
-                                Console.WriteLine(values.GetValueOrDefault(argument));
+                                throw new Exception("Could not find variable named " + argument);
+                            }
+
+                            if (memory.IsTypeOf(argument.Split("[")[0], Type.ARRAYINT))
+                            {
+                                if (argument.Contains("[") && argument.Contains("]"))
+                                {
+                                    var index_arg = argument.Split("[")[1].Split("]")[0];
+                                    int index;
+                                    try
+                                    {
+                                        index = int.Parse(index_arg);
+                                    }
+                                    catch (Exception)
+                                    {
+                                        try
+                                        {
+                                            index = int.Parse(memory.GetValue(index_arg).ToString());
+                                        }
+                                        catch (Exception) { return; }
+                                    }
+                                    Console.WriteLine(((int[])value).GetValue(index));
+                                }
                             }
                             else
                             {
-                                throw new Exception("Could not find variable named " + argument);
+                                Console.WriteLine(value);
                             }
                         }
                     }
@@ -236,6 +304,7 @@ namespace Crystal
         {
             return line.Contains("(") && line.Contains(")");
         }
+
         public int CountCharsUsingIndex(string source, string toFind)
         {
             int count = 0;
