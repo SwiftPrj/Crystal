@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.VisualBasic.FileIO;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
@@ -33,24 +34,14 @@ namespace Crystal
         public void parse()
         {
             var code = File.ReadAllLines(path);
-
             // init memory header 
             memory.Add("print");
             memory.Add("idle");
             memory.Add("var");
             memory.Add("func");
-/*            string[] tare = new string[] { "idle();" };
-            executeString(tare, 0);*/
-
-            for (int i = 0; i < code.Count(); i++) 
-            {
-                
-                executeString(code, i);
-                memory.Add(variables);
-                memory.Add(values);
-            }
-            
-
+            executeString(code);
+            memory.Add(variables);
+            memory.Add(values);
         }
 
         public void executeForLoop(string[] lines, int i)
@@ -70,6 +61,9 @@ namespace Crystal
                     var condition = expression[1].Replace(";", String.Empty).Replace("=", String.Empty).Replace(type, String.Empty).Replace(value, String.Empty).Replace("-", String.Empty).Replace("increment", String.Empty).Trim();
                     var valueInt = int.Parse(value);
                     var symbol = String.Empty;
+                    // create temp var 
+                    variables.Add(varName, Types.INT);
+                    values.Add(varName, valueInt);
                     if (condition.Contains("<"))
                     {
                         symbol = "<";
@@ -93,12 +87,12 @@ namespace Crystal
                         switch (symbol)
                         {
                             case "<":
-                                Console.WriteLine(symbol);
-                                for (int j = int.Parse(value); j < int.Parse(evalValue); j++)
+                                for (int j = int.Parse(value); j < int.Parse(evalValue) - 1; j++)
                                 {
-                                    // TODO: loop the for loop until you find a } and then exit. 
-                                    // issue right now is i can reach the } but cant execute the code in the for loop 
-
+                                    values.Remove(varName);
+                                    values.Add(varName, j);
+                                    string[] code = new string[] { lines[i + 1], lines[i + 2] };
+                                    executeString(code);
                                     foreach (var bracket in lines)
                                     {
                                         if (bracket.Contains("}"))
@@ -106,6 +100,9 @@ namespace Crystal
                                             if (j == int.Parse(evalValue) - 1)
                                             {
                                                 isInForLoop = false;
+                                                values.Remove(varName);
+                                                variables.Remove(varName);
+                                                break;
                                             }
                                         } 
                                     }
@@ -116,117 +113,116 @@ namespace Crystal
                         }
 
                     }
-                    else
+                    else 
                     {
                         throw new Exception("Could not find variable named " + varName);
                     }
-
-
                 }
             }
         }
 
-        public void executeString(string[] lines, int i) 
+        public void executeString(string[] lines) 
         {
-            
-            var line = lines[i].Trim();
-            if (line.Trim() == "}" && isInForLoop)
+            for (int i = 0; i < lines.Count(); i++)
             {
-                // breaking out of the for loop 
-                isInForLoop = false;
-                Console.WriteLine(isInForLoop);
-            }
-            executeForLoop(lines, i);
-            if (line.Contains("func") && line.Contains("->") && line.Contains("(") && line.Contains(")"))
-            {
-                int lineNum = i + 1;
 
-                string declaration = line.Split(":")[0].Trim();
-                string func = declaration.Replace("func", String.Empty).Trim();
-                string type = line.Split(":")[1].Replace("->", String.Empty).Trim();
-                string finalType = String.Empty;
-                if (type.Contains("()")) // empty function 
+                var line = lines[i].Trim();
+                if (line.Trim() == "}" && isInForLoop)
                 {
-                    finalType = type.Replace("()", String.Empty).Trim();
+                    // breaking out of the for loop 
+                    isInForLoop = false;
                 }
-                if (!functions.ContainsKey(func))
+                executeForLoop(lines, i);
+                if (line.Contains("func") && line.Contains("->") && line.Contains("(") && line.Contains(")"))
                 {
-                    Console.WriteLine(func);
-                }
-            }
-            if (line.Contains("var"))
-            {
-                int lineNum = i + 1;
-                if (!isInForLoop)
-                {
+                    int lineNum = i + 1;
+
                     string declaration = line.Split(":")[0].Trim();
-                    string variable = declaration.Replace("var", String.Empty).Trim();
-                    string type = line.Split(":")[1].Trim();
-                    string varType = type.Split("=")[0].Trim();
-                    string value = type.Split("=")[1].Replace(";", "").Trim();
-                    switch (varType) // var type 
+                    string func = declaration.Replace("func", String.Empty).Trim();
+                    string type = line.Split(":")[1].Replace("->", String.Empty).Trim();
+                    string finalType = String.Empty;
+                    if (type.Contains("()")) // empty function 
                     {
-                        case "int":
-                            variables.Add(variable, Types.INT);
-                            values.Add(variable, int.Parse(value));
-                            break;
-                        case "float":
-                            variables.Add(variable, Types.FLOAT);
-                            values.Add(variable, float.Parse(value));
-                            break;
-                        default:
-                            throw new Exception("Invalid variable type at line " + lineNum);
+                        finalType = type.Replace("()", String.Empty).Trim();
+                    }
+                    if (!functions.ContainsKey(func))
+                    {
+                        Console.WriteLine(func);
                     }
                 }
-            }
-
-            // functions 
-            if (line.Contains("idle"))
-            {
-                if (syntaxCheck(line))
+                if (line.Contains("var"))
                 {
-                    Console.ReadKey();
-                }
-                else
-                {
-                    throwSyntaxError(i + 1);
-                }
-            }
-            if (line.Contains("print"))
-            {
-                if (syntaxCheck(line))
-                {
-                    // check if a variable has been passed 
-                    if (line.Contains("\""))
+                    int lineNum = i + 1;
+                    if (!isInForLoop)
                     {
-                        if (CountCharsUsingIndex(line, "\"") <= 2)
+                        string declaration = line.Split(":")[0].Trim();
+                        string variable = declaration.Replace("var", String.Empty).Trim();
+                        string type = line.Split(":")[1].Trim();
+                        string varType = type.Split("=")[0].Trim();
+                        string value = type.Split("=")[1].Replace(";", "").Trim();
+                        switch (varType) // var type 
                         {
-                            var parse = line.Replace(";", "").Trim();
-                            var argument = parse.Replace("print", "").Replace("(", "").Replace(")", "").Replace("\"", "").Trim();
-                            Console.WriteLine(argument);
+                            case "int":
+                                variables.Add(variable, Types.INT);
+                                values.Add(variable, int.Parse(value));
+                                break;
+                            case "float":
+                                variables.Add(variable, Types.FLOAT);
+                                values.Add(variable, float.Parse(value));
+                                break;
+                            default:
+                                throw new Exception("Invalid variable type at line " + lineNum);
+                        }
+                    }
+                }
+
+                // functions 
+                if (line.Contains("idle"))
+                {
+                    if (syntaxCheck(line))
+                    {
+                        Console.ReadKey();
+                    }
+                    else
+                    {
+                        throwSyntaxError(i + 1);
+                    }
+                }
+                if (line.Contains("print"))
+                {
+                    if (syntaxCheck(line))
+                    {
+                        // check if a variable has been passed 
+                        if (line.Contains("\""))
+                        {
+                            if (CountCharsUsingIndex(line, "\"") <= 2)
+                            {
+                                var parse = line.Replace(";", "").Replace("print", "").Replace("(", "").Replace(")", "").Replace("\"", "").Trim();
+                                Console.WriteLine(parse);
+                            }
+                            else
+                            {
+                                throwSyntaxError(i + 1);
+                            }
                         }
                         else
                         {
-                            throwSyntaxError(i + 1);
+                            var parse = line.Replace(";", "").Trim();
+                            var argument = parse.Replace("print", "").Replace("(", "").Replace(")", "").Trim();
+                            if (values.ContainsKey(argument))
+                            {
+                                Console.WriteLine(values.GetValueOrDefault(argument));
+                            }
+                            else
+                            {
+                                throw new Exception("Could not find variable named " + argument);
+                            }
                         }
                     }
                     else
                     {
-                        var parse = line.Replace(";", "").Trim();
-                        var argument = parse.Replace("print", "").Replace("(", "").Replace(")", "").Trim();
-                        if (values.ContainsKey(argument))
-                        {
-                            Console.WriteLine(values.GetValueOrDefault(argument));
-                        }
-                        else
-                        {
-                            throw new Exception("Could not find variable named " + argument);
-                        }
+                        throwSyntaxError(i + 1);
                     }
-                }
-                else
-                {
-                    throwSyntaxError(i + 1);
                 }
             }
         }
