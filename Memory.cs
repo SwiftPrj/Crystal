@@ -16,26 +16,33 @@ namespace Crystal
         ARRAYINT,
         ARRAYSTRING,
         ARRAYGENERIC,
+        VOID,
         None
     }
 
     public class Memory
     {
-        public readonly string[] keywords = { "print", "idle", "var", "func" };
-
+        public readonly string[] keywords = { "sysout", "return", "var", "func", "int", "double", "array", "string"};
         private readonly Dictionary<string, Type> variables;
         private readonly Dictionary<string, Object> values;
-        public readonly Dictionary<string, Object> functions;
+        public readonly Dictionary<string, Type> functions;
+        public readonly Dictionary<string, string> functionCode; 
 
         public Memory() {
             variables = new();
             values = new();
             functions = new();
+            functionCode = new();
         }
 
         public Type GetVarType(string varName)
         {
             return variables.GetValueOrDefault(varName, Type.None);
+        }
+
+        public Type GetFuncType(string funcName)
+        {
+            return functions.GetValueOrDefault(funcName, Type.None);
         }
 
         public bool IsTypeOf(string varName, Type typeCompare)

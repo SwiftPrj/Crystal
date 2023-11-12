@@ -4,9 +4,7 @@
     {
         public static void Main(string[] args)
         {
-            string path = @"../../../tests/test_general.cy";
-            Parser parser = new Parser(path);
-            parser.parse();
+            new Parser(@"../../../tests/test_general.cy").parse();
         }
     }
 }

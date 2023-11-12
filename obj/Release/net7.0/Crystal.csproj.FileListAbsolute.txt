@@ -12,3 +12,17 @@ C:\Users\twisted\source\repos\Crystal\obj\Release\net7.0\refint\Crystal.dll
 C:\Users\twisted\source\repos\Crystal\obj\Release\net7.0\Crystal.pdb
 C:\Users\twisted\source\repos\Crystal\obj\Release\net7.0\Crystal.genruntimeconfig.cache
 C:\Users\twisted\source\repos\Crystal\obj\Release\net7.0\ref\Crystal.dll
+C:\Users\twisted\Documents\GitHub\Crystal\bin\Release\net7.0\Crystal.exe
+C:\Users\twisted\Documents\GitHub\Crystal\bin\Release\net7.0\Crystal.deps.json
+C:\Users\twisted\Documents\GitHub\Crystal\bin\Release\net7.0\Crystal.runtimeconfig.json
+C:\Users\twisted\Documents\GitHub\Crystal\bin\Release\net7.0\Crystal.dll
+C:\Users\twisted\Documents\GitHub\Crystal\bin\Release\net7.0\Crystal.pdb
+C:\Users\twisted\Documents\GitHub\Crystal\obj\Release\net7.0\Crystal.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\twisted\Documents\GitHub\Crystal\obj\Release\net7.0\Crystal.AssemblyInfoInputs.cache
+C:\Users\twisted\Documents\GitHub\Crystal\obj\Release\net7.0\Crystal.AssemblyInfo.cs
+C:\Users\twisted\Documents\GitHub\Crystal\obj\Release\net7.0\Crystal.csproj.CoreCompileInputs.cache
+C:\Users\twisted\Documents\GitHub\Crystal\obj\Release\net7.0\Crystal.dll
+C:\Users\twisted\Documents\GitHub\Crystal\obj\Release\net7.0\refint\Crystal.dll
+C:\Users\twisted\Documents\GitHub\Crystal\obj\Release\net7.0\Crystal.pdb
+C:\Users\twisted\Documents\GitHub\Crystal\obj\Release\net7.0\Crystal.genruntimeconfig.cache
+C:\Users\twisted\Documents\GitHub\Crystal\obj\Release\net7.0\ref\Crystal.dll

@@ -1,12 +1,17 @@
-﻿using Microsoft.VisualBasic.FileIO;
+﻿
+
+using Microsoft.VisualBasic.FileIO;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.Linq;
+using System.Net.Http.Headers;
+using System.Numerics;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Crystal
@@ -16,283 +21,167 @@ namespace Crystal
         private Memory memory;
         public string path;
 
-        public Parser(string path) { 
+        public Parser(string path)
+        {
             this.path = path;
         }
 
         public void parse()
         {
             memory = new Memory();
-            List<string> code = File.ReadAllLines(path).ToList();
-            executeCode(code);
+            string[] code = File.ReadAllLines(path);
+            string result = string.Join("", code);
+            executeCode(result);
         }
-
         public bool isInForLoop = false;
 
-        public void handleForLoop(List<string> lines, int i)
+        // TODO: isolate code from functions that is not in the Main func
+        // for example: if you have a func called "real" and it has a sysout, that sysout shouldn't be executed
+        // as long as the func hasn't been invoked in the main entry point 
+
+        public void executeCode(string input)
         {
-            var line = lines[i].Trim();
-            if (line.Contains("for("))
+            string code = RemoveSpacesOutsideQuotes(input);
+
+            // functions
+            int funcIndex = 0;
+
+            while ((funcIndex = code.IndexOf("func", funcIndex)) != -1)
             {
-                if (line.Contains("->"))
+                string count = code.Substring(funcIndex + "func".Length);
+                string name = count.Split(":")[0];
+                string type = count.Split(":")[1].Split("->")[0];
+                if (memory.functions.ContainsKey(name))
                 {
-                    var loopLine = i;
-                    isInForLoop = true;
-                    string loop = line.Replace("for(", String.Empty).Replace("->", String.Empty).Replace(")", String.Empty).Replace("{", String.Empty).Trim();
-                    
-                    var expression = loop.Split(":");
-                    var varName = expression[0].Replace(":", String.Empty).Trim();
-                    var type = expression[1].Split("=")[0].Trim();
-                    
-                    var value = expression[1].Split(";")[0].Split("=")[1].Trim();
-                    var valueInt = int.Parse(value);
-                    
-                    var condition = expression[1].Replace(";", String.Empty).Replace("=", String.Empty).Replace(type, String.Empty).Replace(value, String.Empty).Replace("-", String.Empty).Replace("increment", String.Empty).Trim();
-                    var symbol = String.Empty;
-                    
-                    // create temp var 
-                    memory.CreateVar(varName, Type.INT, valueInt);
+                    throw new Exception("Function named " + name + " already exists in memory!");
+                }
+                switch (type)
+                {
+                    case "int":
+                        memory.functions.Add(name, Type.INT);
+                        break;
+                    case "void":
+                        memory.functions.Add(name, Type.VOID);
+                        break;
+                    default:
+                        throw new Exception("Invalid return type at function " + name);
+                }
+                if (!count.Contains("{"))
+                {
+                    throwSyntaxError(0);
+                }
+                if (!count.Contains("}"))
+                {
+                    throwSyntaxError(0);
+                }
+                string codeInFunction = count.Split("{")[1].Split("}")[0];
+                // store the code of the function 
+                if (name != "Main")
+                {
+                    memory.functionCode.Add(name, codeInFunction);
+                }
 
-                    if (condition.Contains('<'))
+                if (codeInFunction.Contains("return"))
+                {
+                    if (memory.GetFuncType(name) != Type.VOID)
                     {
-                        symbol = "<";
-                    }
-                    if (condition.Contains('>'))
-                    {
-                        symbol = ">";
-                    }
-                    if (condition.Contains("<="))
-                    {
-                        symbol = "<=";
-                    }
-                    if (condition.Contains(">="))
-                    {
-                        symbol = ">=";
-                    }
-                    var evalValue = expression[1].Replace(";", String.Empty).Replace("=", String.Empty).Replace(type, String.Empty).Replace(value, String.Empty).Replace("-", String.Empty).Replace("increment", String.Empty).Replace(varName, String.Empty).Replace(symbol, String.Empty).Trim();
-                    if (condition.Contains(varName))
-                    {
-                        if (symbol.Equals("<"))
+                        int returnPos = codeInFunction.IndexOf("return");
+                        int returnVal = int.Parse(codeInFunction.Substring(returnPos + 1).Split("n")[1].Replace(";", ""));
+                        if (name == "Main")
                         {
-                            List<string> code = new List<string>();
-
-                            bool endBracket = false;
-                            foreach (var bracket in lines)
-                            {
-                                if (bracket.Contains('}'))
-                                {
-                                    if (i < lines.IndexOf(bracket))
-                                    {
-                                        for(int j = i + 1; j < lines.IndexOf(bracket); ++j)
-                                        {
-                                            code.Add(lines[j]);
-
-                                            if (j == lines.IndexOf(bracket) - 1)
-                                            {
-                                                endBracket = true;
-                                                isInForLoop = false;
-                                            }
-                                        }
-                                        break;
-                                    }
-                                }
-                            }
-
-                            for (int j = int.Parse(value); j < int.Parse(evalValue); j++)
-                            {
-                                if (j == int.Parse(value)) continue;
-                                executeCode(code);
-
-                                foreach (var bracket in lines)
-                                {
-                                    if (bracket.Contains('}'))
-                                    {
-                                        if (j == int.Parse(evalValue) - 1)
-                                        {
-                                            isInForLoop = false;
-
-                                            memory.DeleteVar(varName);
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                memory.ChangeValue(varName, j);
-                            }
-                        }
-                    }
-                    else 
-                    {
-                        throw new Exception("Could not find variable named " + varName);
-                    }
-                }
-            }
-        }
-
-        public void executeCode(List<string> lines) 
-        {
-            for (int i = 0; i < lines.Count(); i++)
-            {
-                var line = lines[i].Trim();
-                if (line.Trim() == "}" && isInForLoop)
-                {
-                    // breaking out of the for loop 
-                    isInForLoop = false;
-                }
-                handleForLoop(lines, i);
-
-                if (line.Contains("func") && line.Contains("->") && line.Contains("(") && line.Contains(")"))
-                {
-                    int lineNum = i + 1;
-
-                    string declaration = line.Split(":")[0].Trim();
-                    string func = declaration.Replace("func", String.Empty).Trim();
-                    string type = line.Split(":")[1].Replace("->", String.Empty).Trim();
-                    string finalType = String.Empty;
-                    if (type.Contains("()")) // empty function 
-                    {
-                        finalType = type.Replace("()", String.Empty).Trim();
-                    }
-                    if (!memory.functions.ContainsKey(func))
-                    {
-                        Console.WriteLine(func);
-                    }
-                }
-                if (line.Contains("var"))
-                {
-                    int lineNum = i + 1;
-                    if (!isInForLoop)
-                    {
-                        string declaration = line.Split(":")[0].Trim();
-                        string variable = declaration.Replace("var", string.Empty).Trim();
-
-                        string type = line.Split(":")[1].Trim();
-                        string varType = type.Split("=")[0].Trim();
-
-                        // array logic
-                        string explicitType = String.Empty;
-                        string typeLiteral = varType;
-                        try
-                        {
-                            explicitType = varType.Split("<")[1].Split(">")[0];
-                            typeLiteral = varType.Replace("<" + explicitType + ">", string.Empty);
-                        }
-                        catch (Exception) { }
-
-                        string value = type.Split("=")[1].Replace(";", string.Empty).Trim();
-
-                        switch (typeLiteral) // var type 
-                        {
-                            case "int":
-                                memory.CreateVar(variable, Type.INT, value);
-                                break;
-                            case "float":
-                                memory.CreateVar(variable, Type.FLOAT, value);
-                                break;
-                            case "array":
-                                string content = value.Replace(" ", string.Empty).Split("{")[1].Split("}")[0];
-
-                                var list = content.Split(",");
-                                if (explicitType.Equals("int"))
-                                {
-                                    int[] array = new int[list.Count()];
-
-                                    for (int uy = 0; uy < list.Count(); ++uy)
-                                    {
-                                        string s = list[uy];
-                                        try
-                                        {
-                                            array[uy] = int.Parse(s);
-                                        }
-                                        catch (Exception)
-                                        {
-                                            /*Console.WriteLine(e.StackTrace);*/
-                                            array[uy] = int.Parse(memory.GetValue(s).ToString());
-                                        }
-                                    }
-
-                                    memory.CreateVar(variable, Type.ARRAYINT, array);
-                                }
-                                break;
-                            default:
-                                throw new Exception("Invalid variable type at line " + lineNum);
-                        }
-                    }
-                }
-
-                // functions 
-                if (line.Contains("idle"))
-                {
-                    if (syntaxCheck(line))
-                    {
-                        Console.ReadKey();
-                    }
-                    else
-                    {
-                        throwSyntaxError(i + 1);
-                    }
-                }
-                if (line.Contains("print"))
-                {
-                    if (syntaxCheck(line))
-                    {
-                        // check if a variable has been passed 
-                        if (line.Contains("\""))
-                        {
-                            if (CountCharsUsingIndex(line, "\"") <= 2)
-                            {
-                                var parse = line.Replace(";", "").Replace("print", "").Replace("(", "").Replace(")", "").Replace("\"", "").Trim();
-                                Console.WriteLine(parse);
-                            }
-                            else
-                            {
-                                throwSyntaxError(i + 1);
-                            }
+                            Environment.ExitCode = returnVal;
                         }
                         else
                         {
-                            var parse = line.Replace(";", string.Empty).Trim();
-                            var argument = parse.Replace("print", string.Empty).Split("(")[1].Split(")")[0].Trim();
-                            object value = memory.GetValue(argument.Split("[")[0]);
-
-                            if (argument == null)
-                            {
-                                throw new Exception("Could not find variable named " + argument);
-                            }
-
-                            if (memory.IsTypeOf(argument.Split("[")[0], Type.ARRAYINT))
-                            {
-                                if (argument.Contains("[") && argument.Contains("]"))
-                                {
-                                    var index_arg = argument.Split("[")[1].Split("]")[0];
-                                    int index;
-                                    try
-                                    {
-                                        index = int.Parse(index_arg);
-                                    }
-                                    catch (Exception)
-                                    {
-                                        try
-                                        {
-                                            index = int.Parse(memory.GetValue(index_arg).ToString());
-                                        }
-                                        catch (Exception) { return; }
-                                    }
-                                    Console.WriteLine(((int[])value).GetValue(index));
-                                }
-                            }
-                            else
-                            {
-                                Console.WriteLine(value);
-                            }
+                            // TODO: implement returnization in program memory  
                         }
                     }
                     else
                     {
-                        throwSyntaxError(i + 1);
+                        throw new Exception("Cannot return a value while the function type is of type void");
+                    }
+
+                } else if (memory.GetFuncType(name) != Type.VOID)
+                {
+                    throw new Exception("Function " + name + " must return a value (type != void)");
+                }
+                funcIndex += "func".Length;
+            }
+
+            if (!memory.functions.ContainsKey("Main"))
+            {
+                throw new Exception("Could not find entry point for program");
+            }
+            else
+            {
+                if (memory.functions.GetValueOrDefault("Main") != Type.INT)
+                {
+                    throw new Exception("Entry point function does not have the correct type (expected integer)");
+                }
+            }
+
+            // sysout
+            int sysoutIndex = 0;
+
+            while ((sysoutIndex = code.IndexOf("sysout", sysoutIndex)) != -1)
+            {
+                string count = code.Substring(sysoutIndex + "sysout".Length);
+                string arrow = count.Substring(0, 2);
+                if (arrow == "->")
+                {
+                    if (count.Contains(";"))
+                    {
+                        Console.WriteLine(count.Split("\"")[1]);
+                    }
+                    else { throwSyntaxError(0); }
+                }
+                else { throwSyntaxError(0); }
+                sysoutIndex += "sysout".Length;
+            }
+        }
+        
+        public bool HasValidSyntax(string result)
+        {
+            return !HasDuplicateCharacters(result, "\"") && !HasDuplicateCharacters(result, ";");
+        }
+
+        public bool HasDuplicateCharacters(string input, string charToCheck)
+        {
+            int charCount = 0;
+
+            for (int i = 0; i < input.Length; i++)
+            {
+                if (input[i].ToString() == charToCheck)
+                {
+                    charCount++;
+                    
+                    if (charCount > 1)
+                    {
+                        return true; 
                     }
                 }
             }
+
+            return false; 
+        }
+
+        public int GetDuplicateCharacters(string input, string charToCheck)
+        {
+            int charCount = 0;
+
+            for (int i = 0; i < input.Length; i++)
+            {
+                if (input[i].ToString() == charToCheck)
+                {
+                    charCount++;
+                    if (charCount >= 1)
+                    {
+                        return charCount;
+                    }
+                }
+            }
+
+            return 0;
         }
 
         public void throwSyntaxError(int line)
@@ -300,9 +189,9 @@ namespace Crystal
             throw new Exception("Invalid syntax at line " + line);
         }
 
-        public bool syntaxCheck(string line) 
+        public string RemoveSpacesOutsideQuotes(string input)
         {
-            return line.Contains("(") && line.Contains(")");
+            return Regex.Replace(input, @"(""[^""\\]*(?:\\.[^""\\]*)*"")|\s+", "$1");
         }
 
         public int CountCharsUsingIndex(string source, string toFind)
@@ -316,5 +205,6 @@ namespace Crystal
             }
             return count;
         }
+
     }
 }

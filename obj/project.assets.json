@@ -14,11 +14,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\twisted\\source\\repos\\Crystal\\Crystal.csproj",
+      "projectUniqueName": "C:\\Users\\twisted\\Documents\\GitHub\\Crystal\\Crystal.csproj",
       "projectName": "Crystal",
-      "projectPath": "C:\\Users\\twisted\\source\\repos\\Crystal\\Crystal.csproj",
+      "projectPath": "C:\\Users\\twisted\\Documents\\GitHub\\Crystal\\Crystal.csproj",
       "packagesPath": "C:\\Users\\twisted\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\twisted\\source\\repos\\Crystal\\obj\\",
+      "outputPath": "C:\\Users\\twisted\\Documents\\GitHub\\Crystal\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
