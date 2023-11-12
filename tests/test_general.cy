@@ -1,4 +1,4 @@
-var caca: float = 35;
+var caca: caca = 35;
 sysout -> caca;
 
 func Main: int -> 

@@ -60,8 +60,11 @@ namespace Crystal
                     case "float":
                         memory.CreateVar<float>(name, Type.FLOAT, float.Parse(value));
                         break;
+                    case "string":
+                        memory.CreateVar<string>(name, Type.STRING, value);
+                        break;
                     default:
-                        throw new Exception("Invalid return type at function " + name);
+                        throw new Exception("Invalid return type at variable " + name);
                 }
                 varIndex += "var".Length;
             }
