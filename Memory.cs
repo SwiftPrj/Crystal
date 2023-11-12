@@ -20,34 +20,128 @@ namespace Crystal
         None
     }
 
+    public class Variable
+    {
+        public string Name;
+        public Type Type;
+        public object Value;
+
+        public Variable(string name, Type type, object value)
+        {
+            Name = name;
+            Type = type;
+            Value = value;
+        }
+
+        public void ChangeValue(object value)
+        {
+            Value = value;
+        }
+    }
+
+    public class Function
+    {
+        public string Name;
+        public Type Type;
+        public List<Variable> Variables;
+        public List<Action> Actions;
+
+        public Function(string name, Type type, List<Action> actions)
+        {
+            Name = name;
+            Type = type;
+            Variables = new();
+            Actions = actions;
+        }
+
+        public void Run()
+        {
+            for(int i = 0; i < Actions.Count; i++) { 
+                Action action = Actions[i];
+                action.Invoke();
+            }
+        }
+    }
+
     public class Memory
     {
         public readonly string[] keywords = { "sysout", "return", "var", "func", "int", "double", "array", "string"};
-        private readonly Dictionary<string, Type> variables;
-        private readonly Dictionary<string, Object> values;
-        public readonly Dictionary<string, Type> functions;
-        public readonly Dictionary<string, string> functionCode; 
+        public readonly List<Function> functions;
 
         public Memory() {
-            variables = new();
-            values = new();
             functions = new();
-            functionCode = new();
         }
 
-        public Type GetVarType(string varName)
+        public bool FuncExists(string funcName)
         {
-            return variables.GetValueOrDefault(varName, Type.None);
+            foreach (Function func in functions)
+            {
+                if (func.Name == funcName)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
-        public Type GetFuncType(string funcName)
+        public void CreateFunction(string name, Type type, List<Action> actions)
         {
-            return functions.GetValueOrDefault(funcName, Type.None);
+            functions.Add(new Function(name, type, actions));
         }
 
-        public bool IsTypeOf(string varName, Type typeCompare)
+        public void CreateFunction(string name, Type type)
         {
-            Type type = variables.GetValueOrDefault(varName, Type.None);
+            functions.Add(new Function(name, type, new()));
+        }
+
+        public Function GetFunction(string funcName)
+        {
+            foreach (Function func in functions)
+            {
+                if (func.Name == funcName)
+                {
+                    return func;
+                }
+            }
+
+            return null;
+        }
+
+        public void CreateVariable(string name, string context, Type type, object value)
+        {
+            Variable var = new Variable(name, type, value);
+            foreach (Function func in functions)
+            {
+                if (func.Name == context)
+                {
+                    func.Variables.Add(var);
+                }
+            }
+        }
+
+        public Variable GetVariable(string varName, string context)
+        {
+            foreach (Function func in functions)
+            {
+                if (func.Name == context)
+                {
+                    foreach (Variable v in func.Variables)
+                    {
+                        if (v.Name == varName)
+                        {
+                            return v;
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        public bool IsTypeOf(string varName, string context, Type typeCompare)
+        {
+            Type type = GetVariable(varName, context).Type;
 
             return GenericTypeCompare(type, typeCompare);
         }
@@ -72,33 +166,6 @@ namespace Crystal
             }
 
             return false;
-        }
-
-        public object GetValue(string varName)
-        {
-            return values.GetValueOrDefault(varName, null);
-        }
-
-        public void CreateVar<T>(string varName, Type type, T value)
-        {
-            variables.Add(varName, type);
-            values.Add(varName, value);
-        }
-
-        public void CreateVar<T>(string varName, Type type, T[] value)
-        {
-            variables.Add(varName, type);
-            values.Add(varName, value);
-        }
-
-        public void DeleteVar(string varName) {
-            variables.Remove(varName);
-            values.Remove(varName);
-        }
-
-        public void ChangeValue(string varName, object newValue)
-        {
-            values[varName] = newValue;
         }
     }
 }

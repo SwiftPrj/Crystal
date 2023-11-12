@@ -5,11 +5,14 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http.Headers;
 using System.Numerics;
+using System.Reflection;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -21,10 +24,7 @@ namespace Crystal
         private Memory memory;
         public string path;
 
-        public Parser(string path)
-        {
-            this.path = path;
-        }
+        public Parser(string path) => this.path = path;
 
         public void parse()
         {
@@ -39,9 +39,9 @@ namespace Crystal
         // for example: if you have a func called "real" and it has a sysout, that sysout shouldn't be executed
         // as long as the func hasn't been invoked in the main entry point 
 
-        public void executeCode(string input)
+        public List<Action> parseCode(string code, string context)
         {
-            string code = RemoveSpacesOutsideQuotes(input);
+            List<Action> actions = new();
 
             // variables
             int varIndex = 0;
@@ -55,13 +55,13 @@ namespace Crystal
                 switch (type)
                 {
                     case "int":
-                        memory.CreateVar<int>(name, Type.INT, int.Parse(value));
+                        memory.CreateVariable(name, context, Type.INT, int.Parse(value));
                         break;
                     case "float":
-                        memory.CreateVar<float>(name, Type.FLOAT, float.Parse(value));
+                        memory.CreateVariable(name, context, Type.FLOAT, float.Parse(value));
                         break;
                     case "string":
-                        memory.CreateVar<string>(name, Type.STRING, value);
+                        memory.CreateVariable(name, context, Type.STRING, value);
                         break;
                     default:
                         throw new Exception("Invalid return type at variable " + name);
@@ -69,6 +69,53 @@ namespace Crystal
                 varIndex += "var".Length;
             }
 
+            // sysout
+            int sysoutIndex = 0;
+
+            while ((sysoutIndex = code.IndexOf("sysout", sysoutIndex)) != -1)
+            {
+                string count = code.Substring(sysoutIndex + "sysout".Length);
+                string arrow = count.Substring(0, 2);
+                if (arrow == "->")
+                {
+                    if (count.Contains("\""))
+                    {
+                        if (count.Contains(";"))
+                        {
+                            Variable var = memory.GetVariable(count.Split("\"")[1], context);
+                            actions.Add(() => Console.WriteLine(var.Value));
+                        }
+                        else { throwSyntaxError(0); }
+                    }
+                    else
+                    {
+                        if (count.Contains(";"))
+                        {
+                            Variable var = memory.GetVariable(count.Split(";")[0].Split("->")[1], context);
+                            actions.Add(() => Console.WriteLine(var.Value));
+                        }
+                    }
+
+                }
+                else { throwSyntaxError(0); }
+                sysoutIndex += "sysout".Length;
+            }
+
+            return actions;
+        }
+
+        private static void runnable(List<Action> actions)
+        {
+            for (int i = 0; i < actions.Count; i++)
+            {
+                Action action = actions[i];
+                action();
+            }
+        }
+
+        public void executeCode(string input)
+        {
+            string code = RemoveSpacesOutsideQuotes(input);
 
             // functions
             int funcIndex = 0;
@@ -78,20 +125,9 @@ namespace Crystal
                 string count = code.Substring(funcIndex + "func".Length);
                 string name = count.Split(":")[0];
                 string type = count.Split(":")[1].Split("->")[0];
-                if (memory.functions.ContainsKey(name))
+                if (memory.FuncExists(name))
                 {
                     throw new Exception("Function named " + name + " already exists in memory!");
-                }
-                switch (type)
-                {
-                    case "int":
-                        memory.functions.Add(name, Type.INT);
-                        break;
-                    case "void":
-                        memory.functions.Add(name, Type.VOID);
-                        break;
-                    default:
-                        throw new Exception("Invalid return type at function " + name);
                 }
                 if (!count.Contains("{"))
                 {
@@ -101,16 +137,26 @@ namespace Crystal
                 {
                     throwSyntaxError(0);
                 }
+
                 string codeInFunction = count.Split("{")[1].Split("}")[0];
-                // store the code of the function 
-                if (name != "Main")
+                switch (type)
                 {
-                    memory.functionCode.Add(name, codeInFunction);
+                    case "int":
+                        memory.CreateFunction(name, Type.INT);
+                        break;
+                    case "void":
+                        memory.CreateFunction(name, Type.VOID);
+                        break;
+                    default:
+                        throw new Exception("Invalid return type at function " + name);
                 }
+
+                // store the code of the function
+                memory.GetFunction(name).Actions = parseCode(codeInFunction, name);
 
                 if (codeInFunction.Contains("return"))
                 {
-                    if (memory.GetFuncType(name) != Type.VOID)
+                    if (memory.GetFunction(name).Type != Type.VOID)
                     {
                         int returnPos = codeInFunction.IndexOf("return");
                         int returnVal = int.Parse(codeInFunction.Substring(returnPos + 1).Split("n")[1].Replace(";", ""));
@@ -128,52 +174,25 @@ namespace Crystal
                         throw new Exception("Cannot return a value while the function type is of type void");
                     }
 
-                } else if (memory.GetFuncType(name) != Type.VOID)
+                } else if (memory.GetFunction(name).Type != Type.VOID)
                 {
                     throw new Exception("Function " + name + " must return a value (type != void)");
                 }
                 funcIndex += "func".Length;
             }
 
-            if (!memory.functions.ContainsKey("Main"))
+            if (!memory.FuncExists("Main"))
             {
                 throw new Exception("Could not find entry point for program");
             }
             else
             {
-                if (memory.functions.GetValueOrDefault("Main") != Type.INT)
+                if (memory.GetFunction("Main").Type != Type.INT)
                 {
                     throw new Exception("Entry point function does not have the correct type (expected integer)");
                 }
-            }
 
-            // sysout
-            int sysoutIndex = 0;
-
-            while ((sysoutIndex = code.IndexOf("sysout", sysoutIndex)) != -1)
-            {
-                string count = code.Substring(sysoutIndex + "sysout".Length);
-                string arrow = count.Substring(0, 2);
-                if (arrow == "->")
-                {
-                    if (count.Contains("\""))
-                    {
-                        if (count.Contains(";"))
-                        {
-                            Console.WriteLine(count.Split("\"")[1]);
-                        }
-                        else { throwSyntaxError(0); }
-                    } else
-                    {
-                        if (count.Contains(";")) 
-                        {
-                            Console.WriteLine(memory.GetValue(count.Split(";")[0].Split("->")[1]));
-                        }
-                    }
-
-                }
-                else { throwSyntaxError(0); }
-                sysoutIndex += "sysout".Length;
+                memory.GetFunction("Main").Run();
             }
         }
         
