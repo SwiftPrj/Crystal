@@ -39,78 +39,81 @@ namespace Crystal
         // for example: if you have a func called "real" and it has a sysout, that sysout shouldn't be executed
         // as long as the func hasn't been invoked in the main entry point 
 
-        public List<Action> parseCode(string code, string context)
+        public List<Action> parseCode(string input, string context)
         {
             List<Action> actions = new();
 
-            // variables
-            int varIndex = 0;
-
-            while ((varIndex = code.IndexOf("var", varIndex)) != -1)
+            string[] lines = input.Split(";");
+            foreach(string code in lines)
             {
-                string count = code.Substring(varIndex + "var".Length);
-                string name = count.Split(":")[0];
-                string value = count.Split(":")[1].Split("=")[1].Split(";")[0];
-                string type = count.Split(":")[1].Split("=")[0];
-                switch (type)
+                // variables
+                int varIndex = 0;
+                while ((varIndex = code.IndexOf("var", varIndex)) != -1)
                 {
-                    case "int":
-                        memory.CreateVariable(name, context, Type.INT, int.Parse(value));
-                        break;
-                    case "float":
-                        memory.CreateVariable(name, context, Type.FLOAT, float.Parse(value));
-                        break;
-                    case "string":
-                        memory.CreateVariable(name, context, Type.STRING, value);
-                        break;
-                    default:
-                        throw new Exception("Invalid return type at variable " + name);
-                }
-                varIndex += "var".Length;
-            }
-
-            // sysout
-            int sysoutIndex = 0;
-
-            while ((sysoutIndex = code.IndexOf("sysout", sysoutIndex)) != -1)
-            {
-                string count = code.Substring(sysoutIndex + "sysout".Length);
-                string arrow = count.Substring(0, 2);
-                if (arrow == "->")
-                {
-                    if (count.Contains("\""))
+                    string count = code.Substring(varIndex + "var".Length);
+                    string name = count.Split(":")[0];
+                    string value = count.Split(":")[1].Split("=")[1].Split(";")[0];
+                    string type = count.Split(":")[1].Split("=")[0];
+                    switch (type)
                     {
-                        if (count.Contains(";"))
+                        case "int":
+                            memory.CreateVariable(name, context, Type.INT, int.Parse(value));
+                            break;
+                        case "float":
+                            memory.CreateVariable(name, context, Type.FLOAT, float.Parse(value));
+                            break;
+                        case "string":
+                            memory.CreateVariable(name, context, Type.STRING, value);
+                            break;
+                        default:
+                            throw new Exception("Invalid return type at variable " + name);
+                    }
+                    varIndex += "var".Length;
+                }
+
+                // sysout
+                int sysoutIndex = 0;
+                while ((sysoutIndex = code.IndexOf("sysout", sysoutIndex)) != -1)
+                {
+                    string count = code.Substring(sysoutIndex + "sysout".Length);
+                    string arrow = count.Substring(0, 2);
+                    if (arrow == "->")
+                    {
+                        if (count.Contains("\""))
                         {
                             Variable var = memory.GetVariable(count.Split("\"")[1], context);
                             actions.Add(() => Console.WriteLine(var.Value));
                         }
-                        else { throwSyntaxError(0); }
-                    }
-                    else
-                    {
-                        if (count.Contains(";"))
+                        else
                         {
                             Variable var = memory.GetVariable(count.Split(";")[0].Split("->")[1], context);
                             actions.Add(() => Console.WriteLine(var.Value));
                         }
                     }
-
+                    else { throwSyntaxError(0); }
+                    sysoutIndex += "sysout".Length;
                 }
-                else { throwSyntaxError(0); }
-                sysoutIndex += "sysout".Length;
+
+                foreach (Function func in memory.functions)
+                {
+                    string f_name = func.Name;
+
+                    int fnIndex = 0;
+                    while ((fnIndex = code.IndexOf(f_name, fnIndex)) != -1)
+                    {
+                        string args = code.Substring(fnIndex + f_name.Length).Split("(")[1].Split(")")[0];
+                        string count = code.Substring(fnIndex + f_name.Length, args.Length + 2);
+
+                        foreach (Action act in func.Actions)
+                        {
+                            actions.Add(act);
+                        }
+                        fnIndex += f_name.Length;
+                    }
+                }
             }
 
             return actions;
-        }
-
-        private static void runnable(List<Action> actions)
-        {
-            for (int i = 0; i < actions.Count; i++)
-            {
-                Action action = actions[i];
-                action();
-            }
         }
 
         public void executeCode(string input)
@@ -166,7 +169,7 @@ namespace Crystal
                         }
                         else
                         {
-                            // TODO: implement returnization in program memory  
+                            // TODO: implement returnization in program memory
                         }
                     }
                     else

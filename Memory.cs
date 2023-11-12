@@ -87,11 +87,17 @@ namespace Crystal
 
         public void CreateFunction(string name, Type type, List<Action> actions)
         {
+            if(keywords.Contains(name))
+                throw new Exception("A function cannot have the same name as a keyword");
+
             functions.Add(new Function(name, type, actions));
         }
 
         public void CreateFunction(string name, Type type)
         {
+            if (keywords.Contains(name))
+                throw new Exception("A function cannot have the same name as a keyword");
+
             functions.Add(new Function(name, type, new()));
         }
 
@@ -110,6 +116,9 @@ namespace Crystal
 
         public void CreateVariable(string name, string context, Type type, object value)
         {
+            if (keywords.Contains(name))
+                throw new Exception("A function cannot have the same name as a keyword");
+
             Variable var = new Variable(name, type, value);
             foreach (Function func in functions)
             {
