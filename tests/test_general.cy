@@ -1,10 +1,7 @@
-func dawdawd: void -> 
-{
-	sysout -> "Helloawdawd World!";
-}
+var caca: float = 35;
+sysout -> caca;
 
 func Main: int -> 
 {
-	sysout -> "Hello World!";
-	return 25;
+	return 5;
 }

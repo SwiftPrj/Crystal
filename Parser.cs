@@ -43,6 +43,30 @@ namespace Crystal
         {
             string code = RemoveSpacesOutsideQuotes(input);
 
+            // variables
+            int varIndex = 0;
+
+            while ((varIndex = code.IndexOf("var", varIndex)) != -1)
+            {
+                string count = code.Substring(varIndex + "var".Length);
+                string name = count.Split(":")[0];
+                string value = count.Split(":")[1].Split("=")[1].Split(";")[0];
+                string type = count.Split(":")[1].Split("=")[0];
+                switch (type)
+                {
+                    case "int":
+                        memory.CreateVar<int>(name, Type.INT, int.Parse(value));
+                        break;
+                    case "float":
+                        memory.CreateVar<float>(name, Type.FLOAT, float.Parse(value));
+                        break;
+                    default:
+                        throw new Exception("Invalid return type at function " + name);
+                }
+                varIndex += "var".Length;
+            }
+
+
             // functions
             int funcIndex = 0;
 
@@ -129,11 +153,21 @@ namespace Crystal
                 string arrow = count.Substring(0, 2);
                 if (arrow == "->")
                 {
-                    if (count.Contains(";"))
+                    if (count.Contains("\""))
                     {
-                        Console.WriteLine(count.Split("\"")[1]);
+                        if (count.Contains(";"))
+                        {
+                            Console.WriteLine(count.Split("\"")[1]);
+                        }
+                        else { throwSyntaxError(0); }
+                    } else
+                    {
+                        if (count.Contains(";")) 
+                        {
+                            Console.WriteLine(memory.GetValue(count.Split(";")[0].Split("->")[1]));
+                        }
                     }
-                    else { throwSyntaxError(0); }
+
                 }
                 else { throwSyntaxError(0); }
                 sysoutIndex += "sysout".Length;
