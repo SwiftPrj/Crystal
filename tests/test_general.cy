@@ -1,19 +1,21 @@
-func readout: void -> 
+func readout: int -> 
 {
-    var a: int = 33;
-    sysout -> a;
-    var b: int = 444;
-    sysout -> b;
+    var test: int = 32;
+
+    sysout -> test;
+
+    return test;
 }
 
-func Main: int -> 
+
+func Main: int ->
 {
-    var a: int = 500;
-    sysout -> a;
-    var b: int = 22;
-    sysout -> b;
 
-    readout();
+    var test: int = 22;
+    var hello: string = "the value of test is ";
+    sysin -> test;
 
-    return 0;
+    
+
+    return test;
 }

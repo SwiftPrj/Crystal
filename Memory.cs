@@ -33,6 +33,10 @@ namespace Crystal
             Value = value;
         }
 
+        public Type GetType()
+        {
+            return Type;
+        }
         public void ChangeValue(object value)
         {
             Value = value;
@@ -45,6 +49,7 @@ namespace Crystal
         public Type Type;
         public List<Variable> Variables;
         public List<Action> Actions;
+        public object Return; // return value
 
         public Function(string name, Type type, List<Action> actions)
         {
@@ -54,9 +59,12 @@ namespace Crystal
             Actions = actions;
         }
 
+        public object GetReturn() { return Return; }
+
         public void Run()
         {
-            for(int i = 0; i < Actions.Count; i++) { 
+            for (int i = 0; i < Actions.Count; i++)
+            {
                 Action action = Actions[i];
                 action.Invoke();
             }
@@ -65,10 +73,11 @@ namespace Crystal
 
     public class Memory
     {
-        public readonly string[] keywords = { "sysout", "return", "var", "func", "int", "double", "array", "string"};
+        public readonly string[] keywords = { "sysout", "return", "var", "func", "int", "double", "array", "string" };
         public readonly List<Function> functions;
 
-        public Memory() {
+        public Memory()
+        {
             functions = new();
         }
 
@@ -87,7 +96,7 @@ namespace Crystal
 
         public void CreateFunction(string name, Type type, List<Action> actions)
         {
-            if(keywords.Contains(name))
+            if (keywords.Contains(name))
                 throw new Exception("A function cannot have the same name as a keyword");
 
             functions.Add(new Function(name, type, actions));
@@ -146,6 +155,25 @@ namespace Crystal
             }
 
             return null;
+        }
+
+        public bool VarExists(string varName, string context)
+        {
+            foreach (Function func in functions)
+            {
+                if (func.Name == context)
+                {
+                    foreach (Variable v in func.Variables)
+                    {  
+                        if (v.Name == varName)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
         }
 
         public bool IsTypeOf(string varName, string context, Type typeCompare)
