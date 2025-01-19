@@ -1,7 +1,4 @@
 Program.cs
-bin
 .vs
 obj
-obj*
-obj/Crystal.csproj.nuget.dgspec.json
-/obj
+bin
