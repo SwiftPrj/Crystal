@@ -4,3 +4,4 @@ bin
 obj
 obj*
 obj/Crystal.csproj.nuget.dgspec.json
+/obj

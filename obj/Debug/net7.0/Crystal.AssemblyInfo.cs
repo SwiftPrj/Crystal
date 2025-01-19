@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Crystal")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f10070f16311f1c101040efacd30c9e1ac4dde8f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+068c0ab6c4d06a9668d21eeb6db9500e9b13457e")]
 [assembly: System.Reflection.AssemblyProductAttribute("Crystal")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Crystal")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
