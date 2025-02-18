@@ -40,6 +40,11 @@ namespace Crystal.Variables
             }
         }
 
+        public bool HasVariable(string name)
+        {
+            return vars.ContainsKey(name);
+        }
+
         public void PrintAllVariables()
         {
             foreach (var variable in vars.Values)

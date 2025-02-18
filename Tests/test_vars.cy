@@ -1,6 +1,6 @@
-﻿func a()
+﻿func a(a: string)
 {
-	var x: string = "salut2";
+	x = "hello 2";
 }
 
 func main()
@@ -8,7 +8,7 @@ func main()
 	var test: int = 22;
 	var x: string = "hello world!";
 
-	x = "salut";
+	x = "hello 1";
 
-	a();
+	a(x);
 }

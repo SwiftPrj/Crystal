@@ -18,7 +18,7 @@ namespace Crystal.Tokenization
 
         private static readonly HashSet<string> Operators = new HashSet<string>
         {
-            ":", "->", "*", "/", "=", "(", ")", "{", "}"
+            ":", "->", "*", "/", "=", "(", ")", "{", "}", ","
         };
 
         public Tokenizer(string source)
@@ -58,6 +58,10 @@ namespace Crystal.Tokenization
                 else if (currentChar == '"')
                 {
                     tokens.Add(new Token(TokenType.String, ReadString()));
+                }
+                else if (currentChar == ',')
+                {
+                    tokens.Add(new Token(TokenType.Comma, ReadNext().ToString()));
                 }
                 else if (currentChar == '(')
                 {

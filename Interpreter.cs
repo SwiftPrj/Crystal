@@ -22,12 +22,29 @@ namespace Crystal
 
                 if (token.Type == TokenType.Keyword && token.Value == "func")
                 {
-                    i = SkipWhitespace(tokens, i); // Move past 'func'
+                    i = SkipWhitespace(tokens, i); // move past 'func'
                     string functionName = tokens[i].Value;
-                    i = SkipWhitespace(tokens, i); // Move past function name
-                    i = SkipWhitespace(tokens, i); // Move past '('
-                    i = SkipWhitespace(tokens, i); // Move past ')'
-                    i = SkipWhitespace(tokens, i); // Move past '{'
+                    i = SkipWhitespace(tokens, i); // move past function name
+                    i = SkipWhitespace(tokens, i); // move past '('
+
+                    var parameters = new List<(string, string)>();
+                    while (tokens[i].Type != TokenType.RightPr)
+                    {
+                        string paramName = tokens[i].Value;
+                        i = SkipWhitespace(tokens, i); // move past parameter name
+                        i = SkipWhitespace(tokens, i); // move past ':'
+                        string paramType = tokens[i].Value;
+                        parameters.Add((paramName, paramType));
+                        i = SkipWhitespace(tokens, i); // move past parameter type
+
+                        if (tokens[i].Value == ",")
+                        {
+                            i = SkipWhitespace(tokens, i); // move past ','
+                        }
+                    }
+
+                    i = SkipWhitespace(tokens, i); // move past ')'
+                    i = SkipWhitespace(tokens, i); // move past '{'
 
                     var functionBody = new List<Token>();
                     while (tokens[i].Type != TokenType.RightBr)
@@ -36,8 +53,8 @@ namespace Crystal
                         i = SkipWhitespace(tokens, i);
                     }
 
-                    functionTable.AddFunction(functionName, functionBody);
-                    i = SkipWhitespace(tokens, i); // Move past '}'
+                    functionTable.AddFunction(functionName, parameters, functionBody);
+                    i = SkipWhitespace(tokens, i); // move past '}'
                 }
                 else
                 {
@@ -45,10 +62,10 @@ namespace Crystal
                 }
             }
 
-            // Execute main function if found
+            // execute main function if found
             if (functionTable.GetFunction("main") != null)
             {
-                ExecuteFunction("main");
+                ExecuteFunction("main", new List<object>());
             }
             else
             {
@@ -56,13 +73,24 @@ namespace Crystal
             }
         }
 
-        private void ExecuteFunction(string functionName)
+        private void ExecuteFunction(string functionName, List<object> arguments)
         {
             var function = functionTable.GetFunction(functionName);
             Console.WriteLine($"Executing function: {functionName}");
 
-            // Push a new scope for the function
-            scopeStack.Push(new SymbolTable());
+            // push a new scope for the function
+            var currentScope = new SymbolTable();
+            scopeStack.Push(currentScope);
+
+            // add function arguments to the scope
+            for (int i = 0; i < function.Parameters.Count; i++)
+            {
+                var (paramName, paramType) = function.Parameters[i];
+                var argumentValue = arguments[i] is string argStr && scopeStack.Any() && scopeStack.Peek().HasVariable(argStr)
+                    ? scopeStack.Peek().GetVariable(argStr).Value
+                    : arguments[i];
+                currentScope.AddVariable(paramName, paramType, argumentValue);
+            }
 
             List<Token> tokens = function.Body;
 
@@ -162,12 +190,26 @@ namespace Crystal
                     }
                     else if(tokens[i].Value == "(")
                     {
-                        i = SkipWhitespace(tokens, i); // next token is )
+                        var functionArgs = new List<object>();
+                        i = SkipWhitespace(tokens, i); // move past '('
+                        while (tokens[i].Type != TokenType.RightPr)
+                        {
+                            string? argValue = tokens[i].Type == TokenType.Identifier && scopeStack.Any() && scopeStack.Peek().HasVariable(tokens[i].Value)
+                               ? scopeStack.Peek().GetVariable(tokens[i].Value).Value.ToString()
+                               : tokens[i].Value;
+                            functionArgs.Add(argValue); // handle different types as needed
+                            i = SkipWhitespace(tokens, i);
+                            if (tokens[i].Value == ",")
+                            {
+                                i = SkipWhitespace(tokens, i); // move past ','
+                            }
+                        }
+                        i = SkipWhitespace(tokens, i); // move past ')'
+
                         if (functionTable.GetFunction(varName) != null)
                         {
-                            ExecuteFunction(varName);
+                            ExecuteFunction(varName, functionArgs);
                         }
-                        i = SkipWhitespace(tokens, i);
                     }
                     else
                     {

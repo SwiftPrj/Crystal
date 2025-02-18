@@ -11,13 +11,13 @@ namespace Crystal.Functions
     {
         private readonly Dictionary<string, Function> functions = new Dictionary<string, Function>();
 
-        public void AddFunction(string name, List<Token> body)
+        public void AddFunction(string name, List<(string, string)> parameters, List<Token> body)
         {
             if (functions.ContainsKey(name))
             {
                 throw new Exception($"Function '{name}' is already defined.");
             }
-            functions[name] = new Function(name, body);
+            functions[name] = new Function(name, parameters, body);
         }
 
         public Function GetFunction(string name)

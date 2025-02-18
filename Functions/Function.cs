@@ -10,11 +10,13 @@ namespace Crystal.Functions
     public class Function
     {
         public string Name { get; }
+        public List<(string, string)> Parameters { get; }
         public List<Token> Body { get; }
 
-        public Function(string name, List<Token> body)
+        public Function(string name, List<(string, string)> parameters, List<Token> body)
         {
             Name = name;
+            Parameters = parameters;
             Body = body;
         }
     }

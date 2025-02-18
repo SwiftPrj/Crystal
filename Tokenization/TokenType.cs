@@ -8,6 +8,7 @@
         String,
         Operator,
         Whitespace,
+        Comma,
         LeftPr,
         RightPr,
         LeftBr,
