@@ -1,20 +1,71 @@
-﻿using Crystal.Tokenization;
+﻿using Crystal.Functions;
+using Crystal.Tokenization;
 using Crystal.Variables;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Crystal
 {
     public class Interpreter
     {
-        private readonly SymbolTable symbolTable = new SymbolTable();
+        private readonly FunctionTable functionTable = new FunctionTable();
+        private readonly Stack<SymbolTable> scopeStack = new Stack<SymbolTable>();
 
         public void Interpret(List<Token> tokens)
         {
+            for (int i = 0; i < tokens.Count;)
+            {
+                var token = tokens[i];
+
+                if (token.Type == TokenType.Keyword && token.Value == "func")
+                {
+                    i = SkipWhitespace(tokens, i); // Move past 'func'
+                    string functionName = tokens[i].Value;
+                    i = SkipWhitespace(tokens, i); // Move past function name
+                    i = SkipWhitespace(tokens, i); // Move past '('
+                    i = SkipWhitespace(tokens, i); // Move past ')'
+                    i = SkipWhitespace(tokens, i); // Move past '{'
+
+                    var functionBody = new List<Token>();
+                    while (tokens[i].Type != TokenType.RightBr)
+                    {
+                        functionBody.Add(tokens[i]);
+                        i = SkipWhitespace(tokens, i);
+                    }
+
+                    functionTable.AddFunction(functionName, functionBody);
+                    i = SkipWhitespace(tokens, i); // Move past '}'
+                }
+                else
+                {
+                    i = SkipWhitespace(tokens, i);
+                }
+            }
+
+            // Execute main function if found
+            if (functionTable.GetFunction("main") != null)
+            {
+                ExecuteFunction("main");
+            }
+            else
+            {
+                throw new Exception("No main function found!");
+            }
+        }
+
+        private void ExecuteFunction(string functionName)
+        {
+            var function = functionTable.GetFunction(functionName);
+            Console.WriteLine($"Executing function: {functionName}");
+
+            // Push a new scope for the function
+            scopeStack.Push(new SymbolTable());
+
+            List<Token> tokens = function.Body;
+
             for (int i = 0; i < tokens.Count;)
             {
                 var token = tokens[i];
@@ -24,7 +75,7 @@ namespace Crystal
                 {
                     // variable name
                     i = SkipWhitespace(tokens, i);
-                    
+
                     string varName = tokens[i].Value;
 
                     // move to next token, should be ':'
@@ -49,7 +100,7 @@ namespace Crystal
                         string value = tokens[i].Value;
                         var error = new Exception("invalid int value in declaration");
 
-                        symbolTable.AddVariable(varName, varType, tokens[i].Type switch
+                        scopeStack.Peek().AddVariable(varName, varType, tokens[i].Type switch
                         {
                             TokenType.Number =>
                                 varType == "int" ?
@@ -58,8 +109,8 @@ namespace Crystal
                                 varType == "string" ?
                                 value : throw error,
                             TokenType.Identifier =>
-                                symbolTable.GetVariable(value).Type == varType ?
-                                symbolTable.GetVariable(value).Value : throw error,
+                                scopeStack.Peek().GetVariable(value).Type == varType ?
+                                scopeStack.Peek().GetVariable(value).Value : throw error,
                             _ => error
                         });
 
@@ -93,21 +144,30 @@ namespace Crystal
 
                         string value = tokens[i].Value;
                         var error = new Exception("invalid int value in assignment");
-                        symbolTable.UpdateVariable(varName, tokens[i].Type switch
+                        scopeStack.Peek().UpdateVariable(varName, tokens[i].Type switch
                         {
                             TokenType.Number =>
-                                symbolTable.GetVariable(varName).Type == "int" ?
+                                scopeStack.Peek().GetVariable(varName).Type == "int" ?
                                 int.Parse(value) : throw error,
                             TokenType.String =>
-                                symbolTable.GetVariable(varName).Type == "string" ?
+                                scopeStack.Peek().GetVariable(varName).Type == "string" ?
                                 value : throw error,
                             TokenType.Identifier =>
-                                symbolTable.GetVariable(value).Type == symbolTable.GetVariable(varName).Type ?
-                                symbolTable.GetVariable(value).Value : throw error,
+                                scopeStack.Peek().GetVariable(value).Type == scopeStack.Peek().GetVariable(varName).Type ?
+                                scopeStack.Peek().GetVariable(value).Value : throw error,
                             _ => error
                         });
 
                         i = SkipWhitespace(tokens, i); // TODO concatenation + math parser
+                    }
+                    else if(tokens[i].Value == "(")
+                    {
+                        i = SkipWhitespace(tokens, i); // next token is )
+                        if (functionTable.GetFunction(varName) != null)
+                        {
+                            ExecuteFunction(varName);
+                        }
+                        i = SkipWhitespace(tokens, i);
                     }
                     else
                     {
@@ -129,7 +189,11 @@ namespace Crystal
                 }
             }
 
-            symbolTable.PrintAllVariables();
+            Console.WriteLine("Start scope: " + functionName);
+            scopeStack.Peek().PrintAllVariables();
+            Console.WriteLine("Stop scope");
+
+            scopeStack.Pop();
         }
 
         private int SkipWhitespace(List<Token> tokens, int originalIndex)

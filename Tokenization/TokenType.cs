@@ -8,6 +8,10 @@
         String,
         Operator,
         Whitespace,
+        LeftPr,
+        RightPr,
+        LeftBr,
+        RightBr,
         Unknown
     }
 }

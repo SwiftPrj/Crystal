@@ -58,7 +58,24 @@ namespace Crystal.Tokenization
                 else if (currentChar == '"')
                 {
                     tokens.Add(new Token(TokenType.String, ReadString()));
-                } else
+                }
+                else if (currentChar == '(')
+                {
+                    tokens.Add(new Token(TokenType.LeftPr, ReadNext().ToString()));
+                }
+                else if (currentChar == ')')
+                {
+                    tokens.Add(new Token(TokenType.RightPr, ReadNext().ToString()));
+                }
+                else if (currentChar == '{')
+                {
+                    tokens.Add(new Token(TokenType.LeftBr, ReadNext().ToString()));
+                }
+                else if (currentChar == '}')
+                {
+                    tokens.Add(new Token(TokenType.RightBr, ReadNext().ToString()));
+                }
+                else
                 {
                     string op = TryReadOperator();
                     if (!string.IsNullOrEmpty(op))
