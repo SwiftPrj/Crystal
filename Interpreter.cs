@@ -170,23 +170,18 @@ namespace Crystal
                     {
                         i = SkipWhitespace(tokens, i); // next token is the value
 
-                        string value = tokens[i].Value;
-                        var error = new Exception("invalid int value in assignment");
-                        scopeStack.Peek().UpdateVariable(varName, tokens[i].Type switch
-                        {
-                            TokenType.Number =>
-                                scopeStack.Peek().GetVariable(varName).Type == "int" ?
-                                int.Parse(value) : throw error,
-                            TokenType.String =>
-                                scopeStack.Peek().GetVariable(varName).Type == "string" ?
-                                value : throw error,
-                            TokenType.Identifier =>
-                                scopeStack.Peek().GetVariable(value).Type == scopeStack.Peek().GetVariable(varName).Type ?
-                                scopeStack.Peek().GetVariable(value).Value : throw error,
-                            _ => error
-                        });
+                        var value = ParseValue(tokens, ref i, scopeStack.Peek().GetVariable(varName).Type);
 
-                        i = SkipWhitespace(tokens, i); // TODO concatenation + math parser
+                        scopeStack.Peek().UpdateVariable(varName, value);
+
+                        if (tokens[i].Value == ";")
+                        {
+                            i = SkipWhitespace(tokens, i);
+                        }
+                        else
+                        {
+                            throw new Exception("expected ';' at the end of the statement");
+                        }
                     }
                     else if(tokens[i].Value == "(")
                     {
@@ -215,15 +210,6 @@ namespace Crystal
                     {
                         throw new Exception("expected '=' in assignment");
                     }
-
-                    if (tokens[i].Value == ";")
-                    {
-                        i = SkipWhitespace(tokens, i);
-                    }
-                    else
-                    {
-                        throw new Exception("expected ';' at the end of the statement");
-                    }
                 }
                 else
                 {
@@ -237,6 +223,65 @@ namespace Crystal
 
             scopeStack.Pop();
         }
+
+        private object ParseValue(List<Token> tokens, ref int i, string expectedType)
+        {
+            var token = tokens[i];
+            object value = null;
+
+            if (token.Type == TokenType.String)
+            {
+                value = token.Value;
+                i = SkipWhitespace(tokens, i);
+            }
+            else if (token.Type == TokenType.Number)
+            {
+                if (expectedType == "int")
+                {
+                    value = int.Parse(token.Value);
+                }
+                else
+                {
+                    throw new Exception("invalid int value in declaration");
+                }
+                i = SkipWhitespace(tokens, i);
+            }
+            else if (token.Type == TokenType.Identifier)
+            {
+                var varValue = scopeStack.Peek().GetVariable(token.Value).Value;
+                if (expectedType == "string" && varValue is string)
+                {
+                    value = varValue;
+                }
+                else if (expectedType == "int" && varValue is int)
+                {
+                    value = varValue;
+                }
+                else
+                {
+                    throw new Exception("type mismatch in variable assignment");
+                }
+                i = SkipWhitespace(tokens, i);
+            }
+
+            if (tokens[i].Value == "+")
+            {
+                i = SkipWhitespace(tokens, i);
+                var rightValue = ParseValue(tokens, ref i, expectedType);
+
+                if (expectedType == "string")
+                {
+                    value = (string)value + (string)rightValue;
+                }
+                else
+                {
+                    throw new Exception("concatenation operator is only supported for strings");
+                }
+            }
+
+            return value;
+        }
+
 
         private int SkipWhitespace(List<Token> tokens, int originalIndex)
         {

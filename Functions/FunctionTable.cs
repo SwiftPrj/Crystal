@@ -15,7 +15,7 @@ namespace Crystal.Functions
         {
             if (functions.ContainsKey(name))
             {
-                throw new Exception($"Function '{name}' is already defined.");
+                throw new Exception($"function '{name}' is already defined.");
             }
             functions[name] = new Function(name, parameters, body);
         }
@@ -26,7 +26,7 @@ namespace Crystal.Functions
             {
                 return functions[name];
             }
-            throw new Exception($"Function '{name}' is not defined.");
+            throw new Exception($"function '{name}' is not defined.");
         }
     }
 }

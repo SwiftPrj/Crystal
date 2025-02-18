@@ -1,6 +1,6 @@
 ﻿func a(a: string)
 {
-	x = "hello 2";
+	a = a + "2";
 }
 
 func main()
